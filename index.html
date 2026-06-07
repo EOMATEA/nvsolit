@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NV So Lit</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600&family=Barlow+Condensed:ital,wght@0,300;0,700;1,300&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue:    #1565c0;
+      --blue-lt: #1e88e5;
+      --blue-dk: #071830;
+      --orange:  #f57c00;
+      --orange-lt: #ff9800;
+      --cyan:    #40c4ff;
+      --white:   #ffffff;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--blue-dk);
+      color: var(--white);
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
+      min-height: 100vh;
+    }
+
+    /* ══════════════════════════════════
+       ANIMATED BACKGROUND CANVAS
+    ══════════════════════════════════ */
+    #bg-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* ══════════════════════════════════
+       HERO
+    ══════════════════════════════════ */
+    .hero {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      z-index: 1;
+    }
+
+    /* ── FULL-SCREEN VINYL WRAPPER ── */
+    .vinyl-bg {
+      position: absolute;
+      right: -15vw;
+      top: 50%;
+      transform: translateY(-50%);
+      width: min(100vh, 100vw);
+      height: min(100vh, 100vw);
+      will-change: transform;
+      pointer-events: none;
+      z-index: 2;
+      transform-origin: center center;
+    }
+
+    .vinyl-bg svg { width: 100%; height: 100%; }
+
+    /* Cockroach on vinyl */
+    .cockroach-wrap {
+      position: absolute;
+      /* orbit at radius ~35% of disc = 175px on a 500px SVG */
+      /* We'll place it via JS/CSS animation orbiting the center */
+      top: 50%;
+      right: -15vw;
+      width: min(100vh, 100vw);
+      height: min(100vh, 100vw);
+      transform: translateY(-50%);
+      z-index: 3;
+      pointer-events: none;
+    }
+
+    .cockroach {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 54px;
+      height: 54px;
+      margin-top: -27px;
+      margin-left: -27px;
+      transform-origin: center center;
+      animation: cockroach-orbit 8s linear infinite;
+      will-change: transform;
+    }
+
+    /* Cockroach itself wiggles its legs */
+    .cockroach svg {
+      animation: roach-legs 0.18s ease-in-out infinite alternate;
+    }
+
+    @keyframes cockroach-orbit {
+      from { transform: rotate(0deg) translateX(30%) rotate(90deg); }
+      to   { transform: rotate(360deg) translateX(30%) rotate(90deg); }
+    }
+
+    @keyframes roach-legs {
+      from { transform: scaleX(1)   scaleY(1); }
+      to   { transform: scaleX(1.06) scaleY(0.94); }
+    }
+
+    /* Scared jump when hovered */
+    .cockroach-wrap:hover .cockroach {
+      animation: cockroach-orbit 1.5s linear infinite, roach-panic 0.3s ease-in-out infinite;
+    }
+
+    @keyframes roach-panic {
+      0%   { transform: rotate(var(--orbit-angle, 0deg)) translateX(30%) rotate(90deg) scale(1.2); }
+      50%  { transform: rotate(var(--orbit-angle, 0deg)) translateX(28%) rotate(90deg) scale(0.9); }
+      100% { transform: rotate(var(--orbit-angle, 0deg)) translateX(30%) rotate(90deg) scale(1.2); }
+    }
+
+    /* ── Hero content ── */
+    .hero-content {
+      position: relative;
+      z-index: 10;
+      padding: 0 5vw;
+      max-width: 55vw;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .eyebrow {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 5px;
+      text-transform: uppercase;
+      color: var(--orange-lt);
+      opacity: 0.9;
+    }
+
+    .artist-initial {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(5rem, 14vw, 12rem);
+      line-height: 0.88;
+      color: var(--cyan);
+      text-shadow:
+        0 0 80px rgba(64,196,255,0.5),
+        0 0 160px rgba(64,196,255,0.2),
+        2px 2px 0 rgba(0,0,0,0.4);
+    }
+
+    .artist-subtitle {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(3rem, 9vw, 7.5rem);
+      line-height: 0.9;
+      color: var(--orange-lt);
+      text-shadow:
+        0 0 60px rgba(255,152,0,0.5),
+        2px 2px 0 rgba(0,0,0,0.4);
+    }
+
+    .tagline {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: clamp(1rem, 2.5vw, 1.4rem);
+      font-style: italic;
+      font-weight: 300;
+      color: rgba(255,255,255,0.65);
+      letter-spacing: 1px;
+    }
+
+    /* ── Hero link buttons ── */
+    .hero-links {
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+      margin-top: 1.25rem;
+      max-width: 270px;
+    }
+
+    .hero-link-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      padding: 0.7rem 1.1rem;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      text-decoration: none;
+      color: var(--white);
+      font-size: 0.85rem;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+      backdrop-filter: blur(12px);
+      transition: background 0.2s, border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+    }
+
+    .hero-link-btn:hover {
+      background: rgba(245,124,0,0.2);
+      border-color: rgba(255,152,0,0.5);
+      transform: translateX(5px);
+      box-shadow: 0 0 20px rgba(255,152,0,0.15);
+    }
+
+    .hero-link-btn svg { flex-shrink: 0; opacity: 0.85; }
+
+    /* ── Scroll hint ── */
+    .scroll-hint {
+      position: absolute;
+      bottom: 2rem;
+      left: 5vw;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 0.65rem;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.3);
+      animation: hint-bounce 2.5s ease-in-out infinite;
+    }
+
+    @keyframes hint-bounce {
+      0%,100% { transform: translateY(0); }
+      50%      { transform: translateY(5px); }
+    }
+
+    /* ══════════════════════════════════
+       BELOW HERO
+    ══════════════════════════════════ */
+    .below {
+      background: linear-gradient(180deg, var(--blue-dk) 0%, #040e1f 100%);
+      position: relative;
+      z-index: 5;
+    }
+
+    .content-wrap {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 3rem 2rem 5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2.5rem;
+    }
+
+    .sec-label {
+      font-size: 0.62rem;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: var(--orange-lt);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .sec-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, rgba(255,152,0,0.4), transparent);
+    }
+
+    .track-block {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+
+    .track-block:hover { border-color: rgba(255,152,0,0.3); }
+
+    .track-block iframe { width: 100%; display: block; border: none; }
+
+    /* Fade in */
+    .fade-in { opacity:0; transform:translateY(16px); transition: opacity 0.6s ease, transform 0.6s ease; }
+    .fade-in.visible { opacity:1; transform:translateY(0); }
+
+    footer {
+      border-top: 1px solid rgba(255,255,255,0.06);
+      padding: 1.5rem 2rem;
+      text-align: center;
+      font-size: 0.65rem;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.18);
+      position: relative;
+      z-index: 5;
+      background: #040e1f;
+    }
+
+    @media (max-width: 600px) {
+      .vinyl-bg, .cockroach-wrap { right: -35vw; width: 140vw; height: 140vw; }
+      .hero-content { max-width: 72vw; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Animated background canvas -->
+<canvas id="bg-canvas"></canvas>
+
+<div style="position:relative; z-index:1;">
+
+<!-- ══════════ HERO ══════════ -->
+<section class="hero">
+
+  <!-- Full-screen vinyl SVG -->
+  <div class="vinyl-bg" id="vinylBg">
+    <svg viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="discGrad" cx="50%" cy="50%" r="50%">
+          <stop offset="0%"   stop-color="#0d1520"/>
+          <stop offset="100%" stop-color="#050a10"/>
+        </radialGradient>
+        <radialGradient id="labelGrad" cx="38%" cy="35%" r="60%">
+          <stop offset="0%"   stop-color="#e65100"/>
+          <stop offset="50%"  stop-color="#bf360c"/>
+          <stop offset="100%" stop-color="#7f1900"/>
+        </radialGradient>
+        <radialGradient id="sheen" cx="35%" cy="32%" r="55%">
+          <stop offset="0%"   stop-color="rgba(64,196,255,0.10)"/>
+          <stop offset="100%" stop-color="rgba(64,196,255,0)"/>
+        </radialGradient>
+        <linearGradient id="highlight" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%"   stop-color="rgba(64,196,255,0.12)"/>
+          <stop offset="50%"  stop-color="rgba(64,196,255,0.03)"/>
+          <stop offset="100%" stop-color="rgba(64,196,255,0)"/>
+        </linearGradient>
+        <clipPath id="discClip"><circle cx="250" cy="250" r="248"/></clipPath>
+      </defs>
+
+      <!-- Disc base -->
+      <circle cx="250" cy="250" r="248" fill="url(#discGrad)" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+
+      <!-- Grooves -->
+      <g clip-path="url(#discClip)" fill="none">
+        <circle cx="250" cy="250" r="240" stroke="rgba(255,255,255,0.025)" stroke-width="1.2"/>
+        <circle cx="250" cy="250" r="234" stroke="rgba(255,255,255,0.018)" stroke-width="1"/>
+        <circle cx="250" cy="250" r="228" stroke="rgba(255,255,255,0.025)" stroke-width="1.2"/>
+        <circle cx="250" cy="250" r="222" stroke="rgba(255,255,255,0.018)" stroke-width="1"/>
+        <circle cx="250" cy="250" r="216" stroke="rgba(255,255,255,0.028)" stroke-width="1.2"/>
+        <circle cx="250" cy="250" r="210" stroke="rgba(255,255,255,0.018)" stroke-width="1"/>
+        <circle cx="250" cy="250" r="204" stroke="rgba(255,255,255,0.025)" stroke-width="1.2"/>
+        <circle cx="250" cy="250" r="198" stroke="rgba(255,255,255,0.018)" stroke-width="1"/>
+        <circle cx="250" cy="250" r="192" stroke="rgba(255,255,255,0.028)" stroke-width="1.2"/>
+        <circle cx="250" cy="250" r="186" stroke="rgba(255,255,255,0.018)" stroke-width="1"/>
+        <circle cx="250" cy="250" r="180" stroke="rgba(255,255,255,0.025)" stroke-width="1.2"/>
+        <circle cx="250" cy="250" r="174" stroke="rgba(255,255,255,0.018)" stroke-width="1"/>
+        <circle cx="250" cy="250" r="168" stroke="rgba(255,255,255,0.025)" stroke-width="1.2"/>
+        <circle cx="250" cy="250" r="162" stroke="rgba(255,255,255,0.018)" stroke-width="1"/>
+        <circle cx="250" cy="250" r="156" stroke="rgba(255,255,255,0.025)" stroke-width="1.2"/>
+        <circle cx="250" cy="250" r="150" stroke="rgba(255,255,255,0.018)" stroke-width="1"/>
+        <circle cx="250" cy="250" r="144" stroke="rgba(255,255,255,0.025)" stroke-width="1.2"/>
+        <circle cx="250" cy="250" r="138" stroke="rgba(255,255,255,0.018)" stroke-width="1"/>
+        <circle cx="250" cy="250" r="132" stroke="rgba(255,255,255,0.05)"  stroke-width="1.5"/>
+      </g>
+
+      <!-- Reflections -->
+      <circle cx="250" cy="250" r="248" fill="url(#highlight)" clip-path="url(#discClip)"/>
+      <circle cx="250" cy="250" r="248" fill="url(#sheen)"     clip-path="url(#discClip)"/>
+
+      <!-- Orange label -->
+      <circle cx="250" cy="250" r="82"  fill="url(#labelGrad)"/>
+      <circle cx="250" cy="250" r="82"  fill="none" stroke="rgba(255,200,100,0.25)" stroke-width="1.5"/>
+      <circle cx="250" cy="250" r="75"  fill="none" stroke="rgba(255,200,100,0.08)" stroke-width="1"/>
+
+      <!-- Label text -->
+      <text x="250" y="238" text-anchor="middle" font-family="'Bebas Neue', sans-serif" font-size="22" fill="rgba(255,255,255,0.95)" letter-spacing="4">NV</text>
+      <line x1="214" y1="247" x2="286" y2="247" stroke="rgba(255,200,100,0.4)" stroke-width="0.8"/>
+      <text x="250" y="261" text-anchor="middle" font-family="Inter, sans-serif" font-size="7" fill="rgba(255,200,100,0.7)" letter-spacing="3">SO LIT</text>
+
+      <!-- Spindle -->
+      <circle cx="250" cy="250" r="6" fill="#020508"/>
+      <circle cx="250" cy="250" r="6" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+    </svg>
+  </div>
+
+  <!-- Cockroach orbiting the vinyl -->
+  <div class="cockroach-wrap" id="cockroachWrap">
+    <div class="cockroach" id="cockroach">
+      <!-- SVG cockroach (top-down view) -->
+      <svg viewBox="0 0 54 54" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Antennae -->
+        <line x1="24" y1="8"  x2="14" y2="1"  stroke="#3a2a10" stroke-width="1.2" stroke-linecap="round"/>
+        <line x1="30" y1="8"  x2="40" y2="1"  stroke="#3a2a10" stroke-width="1.2" stroke-linecap="round"/>
+        <!-- Head -->
+        <ellipse cx="27" cy="11" rx="6" ry="5" fill="#2c1a06"/>
+        <!-- Eye dots -->
+        <circle cx="24.5" cy="10" r="1.2" fill="#ff6600" opacity="0.9"/>
+        <circle cx="29.5" cy="10" r="1.2" fill="#ff6600" opacity="0.9"/>
+        <!-- Thorax -->
+        <ellipse cx="27" cy="21" rx="8" ry="7" fill="#3d2508"/>
+        <!-- Abdomen -->
+        <ellipse cx="27" cy="36" rx="9" ry="12" fill="#4a2d0a"/>
+        <!-- Abdomen segments -->
+        <line x1="18.5" y1="29" x2="35.5" y2="29" stroke="#2c1a06" stroke-width="0.8" opacity="0.6"/>
+        <line x1="18"   y1="33" x2="36"   y2="33" stroke="#2c1a06" stroke-width="0.8" opacity="0.6"/>
+        <line x1="18.5" y1="37" x2="35.5" y2="37" stroke="#2c1a06" stroke-width="0.8" opacity="0.6"/>
+        <line x1="19.5" y1="41" x2="34.5" y2="41" stroke="#2c1a06" stroke-width="0.8" opacity="0.5"/>
+        <!-- Wings hint -->
+        <ellipse cx="22" cy="28" rx="5" ry="10" fill="#5a3810" opacity="0.5" transform="rotate(-8,22,28)"/>
+        <ellipse cx="32" cy="28" rx="5" ry="10" fill="#5a3810" opacity="0.5" transform="rotate(8,32,28)"/>
+        <!-- Legs left (3 pairs animated) -->
+        <g class="legs-l" style="transform-origin:20px 22px; animation:leg-wave-l 0.18s ease-in-out infinite alternate;">
+          <line x1="20" y1="20" x2="8"  y2="15" stroke="#2c1a06" stroke-width="1.3" stroke-linecap="round"/>
+          <line x1="20" y1="25" x2="7"  y2="24" stroke="#2c1a06" stroke-width="1.3" stroke-linecap="round"/>
+          <line x1="20" y1="30" x2="8"  y2="33" stroke="#2c1a06" stroke-width="1.3" stroke-linecap="round"/>
+        </g>
+        <!-- Legs right -->
+        <g class="legs-r" style="transform-origin:34px 22px; animation:leg-wave-r 0.18s ease-in-out infinite alternate;">
+          <line x1="34" y1="20" x2="46" y2="15" stroke="#2c1a06" stroke-width="1.3" stroke-linecap="round"/>
+          <line x1="34" y1="25" x2="47" y2="24" stroke="#2c1a06" stroke-width="1.3" stroke-linecap="round"/>
+          <line x1="34" y1="30" x2="46" y2="33" stroke="#2c1a06" stroke-width="1.3" stroke-linecap="round"/>
+        </g>
+        <!-- Tail cerci -->
+        <line x1="24" y1="47" x2="19" y2="53" stroke="#2c1a06" stroke-width="1" stroke-linecap="round"/>
+        <line x1="30" y1="47" x2="35" y2="53" stroke="#2c1a06" stroke-width="1" stroke-linecap="round"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Left content -->
+  <div class="hero-content">
+    <p class="eyebrow">Microwave Producer</p>
+    <div class="artist-initial">NV</div>
+    <div class="artist-subtitle">So Lit</div>
+    <p class="tagline">Chút di sản văn hóa</p>
+
+    <div class="hero-links">
+      <a href="https://www.tiktok.com/@nv26123" target="_blank" rel="noopener" class="hero-link-btn">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.73a4.85 4.85 0 0 1-1.01-.04z"/></svg>
+        TikTok
+      </a>
+      <a href="https://www.facebook.com/nguyen.van.626206" target="_blank" rel="noopener" class="hero-link-btn">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97h-1.513c-1.491 0-1.956.93-1.956 1.886v2.267h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/></svg>
+        Facebook
+      </a>
+      <a href="https://www.instagram.com/nvsolitttt/" target="_blank" rel="noopener" class="hero-link-btn">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+        Instagram
+      </a>
+      <a href="https://www.youtube.com/@nvsolit26123" target="_blank" rel="noopener" class="hero-link-btn">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+        YouTube
+      </a>
+      <a href="https://soundcloud.com/nvsolitttt" target="_blank" rel="noopener" class="hero-link-btn">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M1.175 12.225c-.015.082-.03.164-.03.25 0 .085.015.164.03.25l.65 4.5-.65 4.5c-.015.082-.03.164-.03.25 0 .41.335.745.745.745.41 0 .745-.335.745-.745L3.1 17.225l-.585-4.5C2.5 12.64 2.165 12.305 1.755 12.305c-.41 0-.58.335-.58.745zM0 14.73c0 .41.335.745.745.745.41 0 .745-.335.745-.745v-2.955c0-.41-.335-.745-.745-.745C.335 11.03 0 11.365 0 11.775v2.955zm4.225-6.37c-.082.015-.164.03-.247.03s-.165-.015-.247-.03l-.65 7.87.65 3.3c.082.015.164.03.247.03s.165-.015.247-.03L4.875 16.23l-.65-7.87zm2.25-1.275c-.082.015-.164.03-.247.03s-.165-.015-.247-.03l-.65 9.145.65 3.3c.082.015.164.03.247.03s.165-.015.247-.03l.65-3.3-.65-9.145zm2.25-1.005c-.082 0-.165 0-.247.015l-.65 10.145.65 3.3c.082.015.164.015.247.015s.165 0 .247-.015l.65-3.3-.65-10.15C8.643 6.08 8.56 6.08 8.478 6.08zm2.502-.48c-.082 0-.165 0-.247.015l-.65 10.615.65 3.3c.082.015.164.015.247.015s.165 0 .247-.015l.65-3.3L11.228 5.615C11.145 5.6 11.063 5.6 10.98 5.6zm2.25.615c-.082 0-.165 0-.247.015l-.65 10 .65 3.3c.082.015.164.015.247.015s.165 0 .247-.015l.65-3.3-.65-10C13.395 6.215 13.313 6.215 13.23 6.215zm8.995 3.96c-.328 0-.643.065-.935.182C20.95 7.8 18.97 6.08 16.6 6.08c-.574 0-1.13.118-1.64.328-.197.082-.247.165-.25.245v10.022c.003.083.055.158.138.195l.112.015h5.065c1.28 0 2.32-1.04 2.32-2.32 0-1.28-1.04-2.32-2.32-2.32z"/></svg>
+        SoundCloud
+      </a>
+    </div>
+  </div>
+
+  <!-- Scroll hint -->
+  <div class="scroll-hint">
+    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <path d="M12 5v14M5 12l7 7 7-7"/>
+    </svg>
+    Scroll
+  </div>
+</section>
+
+<!-- ══════════ BELOW HERO ══════════ -->
+<div class="below">
+  <div class="content-wrap">
+    <div class="fade-in">
+      <p class="sec-label">Nghe nhạc</p>
+      <div style="display:flex; flex-direction:column; gap:1rem;">
+        <div class="track-block">
+          <iframe height="120" scrolling="no" allow="autoplay"
+            src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/nvsolitttt/no-pole-ultimate-2&color=%23f57c00&inverse=true&auto_play=false&show_user=true">
+          </iframe>
+        </div>
+        <div class="track-block">
+          <iframe height="120" scrolling="no" allow="autoplay"
+            src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/nvsolitttt/no-pole-ultimate&color=%23f57c00&inverse=true&auto_play=false&show_user=true">
+          </iframe>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>© 2024 NV So Lit · All rights reserved</footer>
+
+</div><!-- /z-index wrapper -->
+
+<style>
+  @keyframes leg-wave-l {
+    from { transform: rotate(-12deg); }
+    to   { transform: rotate(12deg); }
+  }
+  @keyframes leg-wave-r {
+    from { transform: rotate(12deg); }
+    to   { transform: rotate(-12deg); }
+  }
+</style>
+
+<script>
+  // ══════════════════════════════════
+  // ANIMATED BACKGROUND — Aurora waves + floating orbs
+  // ══════════════════════════════════
+  const canvas = document.getElementById('bg-canvas');
+  const ctx    = canvas.getContext('2d');
+  let W, H;
+
+  function resize() {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  // Orbs
+  const orbs = Array.from({ length: 7 }, (_, i) => ({
+    x:  Math.random() * window.innerWidth,
+    y:  Math.random() * window.innerHeight,
+    r:  120 + Math.random() * 200,
+    vx: (Math.random() - 0.5) * 0.4,
+    vy: (Math.random() - 0.5) * 0.3,
+    hue: i < 4 ? (200 + Math.random() * 40) : (28 + Math.random() * 20), // blue or orange
+    phase: Math.random() * Math.PI * 2,
+  }));
+
+  // Wave params
+  const waves = [
+    { amp: 60, freq: 0.008, speed: 0.0008, phase: 0, y: 0.55, alpha: 0.06, color: '#1565c0' },
+    { amp: 40, freq: 0.012, speed: 0.0012, phase: 1, y: 0.65, alpha: 0.05, color: '#f57c00' },
+    { amp: 50, freq: 0.007, speed: 0.0006, phase: 2, y: 0.75, alpha: 0.04, color: '#0d47a1' },
+  ];
+
+  let t = 0;
+
+  function drawFrame() {
+    ctx.clearRect(0, 0, W, H);
+
+    // Base gradient
+    const bg = ctx.createLinearGradient(0, 0, W, H);
+    bg.addColorStop(0,   '#071830');
+    bg.addColorStop(0.5, '#0d2a55');
+    bg.addColorStop(1,   '#040e1f');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+
+    // Orbs
+    orbs.forEach(o => {
+      o.x += o.vx + Math.sin(t * 0.3 + o.phase) * 0.3;
+      o.y += o.vy + Math.cos(t * 0.2 + o.phase) * 0.2;
+      if (o.x < -o.r) o.x = W + o.r;
+      if (o.x > W + o.r) o.x = -o.r;
+      if (o.y < -o.r) o.y = H + o.r;
+      if (o.y > H + o.r) o.y = -o.r;
+
+      const pulse = 0.85 + 0.15 * Math.sin(t * 0.5 + o.phase);
+      const grad = ctx.createRadialGradient(o.x, o.y, 0, o.x, o.y, o.r * pulse);
+      grad.addColorStop(0,   `hsla(${o.hue},80%,45%,0.18)`);
+      grad.addColorStop(0.5, `hsla(${o.hue},70%,35%,0.08)`);
+      grad.addColorStop(1,   `hsla(${o.hue},60%,25%,0)`);
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(o.x, o.y, o.r * pulse, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // Sine waves
+    waves.forEach(w => {
+      w.phase += w.speed;
+      ctx.beginPath();
+      ctx.moveTo(0, H * w.y);
+      for (let x = 0; x <= W; x += 4) {
+        const y = H * w.y + Math.sin(x * w.freq + w.phase * Math.PI * 2) * w.amp
+                           + Math.sin(x * w.freq * 1.7 + w.phase * 1.3) * (w.amp * 0.4);
+        ctx.lineTo(x, y);
+      }
+      ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
+      ctx.fillStyle = w.color + Math.round(w.alpha * 255).toString(16).padStart(2,'0');
+      ctx.fill();
+    });
+
+    // Subtle scan-line texture
+    for (let y = 0; y < H; y += 4) {
+      ctx.fillStyle = 'rgba(0,0,0,0.025)';
+      ctx.fillRect(0, y, W, 1);
+    }
+
+    t += 0.016;
+    requestAnimationFrame(drawFrame);
+  }
+
+  drawFrame();
+
+  // ══════════════════════════════════
+  // VINYL SPIN on scroll (inertia)
+  // ══════════════════════════════════
+  const vinylBg = document.getElementById('vinylBg');
+  const cwrap   = document.getElementById('cockroachWrap');
+  let rotation  = 0;
+  let velocity  = 0;
+  let lastY     = window.scrollY;
+  let rafId     = null;
+  let autoSpin  = false;
+
+  function applyRot() {
+    const t = `translateY(-50%) rotate(${rotation}deg)`;
+    vinylBg.style.transform = t;
+    cwrap.style.transform   = t;
+  }
+
+  window.addEventListener('scroll', () => {
+    if (autoSpin) return;
+    const y = window.scrollY;
+    velocity += (y - lastY) * 1.1;
+    lastY = y;
+    if (!rafId) rafId = requestAnimationFrame(inertia);
+  }, { passive: true });
+
+  function inertia() {
+    if (Math.abs(velocity) > 0.03) {
+      rotation += velocity;
+      velocity *= 0.91;
+      applyRot();
+      rafId = requestAnimationFrame(inertia);
+    } else {
+      velocity = 0;
+      rafId = null;
+    }
+  }
+
+  // ── Fade-in observer ──
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+  }, { threshold: 0.12 });
+  document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
