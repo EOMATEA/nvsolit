@@ -200,6 +200,41 @@
       z-index: 5;
     }
 
+    /* Poem */
+    .poem-block {
+      border-left: 2px solid rgba(255,171,64,0.35);
+      padding: 0.5rem 0 0.5rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.1rem;
+    }
+
+    .poem-stanza {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+    }
+
+    .poem-line {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-style: italic;
+      font-weight: 300;
+      font-size: clamp(0.95rem, 2vw, 1.1rem);
+      line-height: 1.6;
+      color: rgba(255,255,255,0.62);
+      letter-spacing: 0.2px;
+    }
+
+    .poem-line.opener {
+      font-size: clamp(1rem, 2.2vw, 1.2rem);
+      color: rgba(255,255,255,0.8);
+      font-weight: 300;
+    }
+
+    .poem-line.closer {
+      color: rgba(255,171,64,0.75);
+    }
+
     .content-wrap {
       max-width: 640px;
       margin: 0 auto;
@@ -421,6 +456,44 @@
 
 <div class="below">
   <div class="content-wrap">
+    <div class="fade-in">
+      <div class="poem-block">
+        <div class="poem-stanza">
+          <span class="poem-line opener">Every song I've ever written began as mathematics.</span>
+        </div>
+        <div class="poem-stanza">
+          <span class="poem-line">Frequencies.</span>
+          <span class="poem-line">Samples.</span>
+          <span class="poem-line">Voltages.</span>
+          <span class="poem-line">Binary states.</span>
+        </div>
+        <div class="poem-stanza">
+          <span class="poem-line">Nothing more than organized electricity.</span>
+        </div>
+        <div class="poem-stanza">
+          <span class="poem-line">Yet somewhere in that procession of numbers,</span>
+          <span class="poem-line">meaning appears.</span>
+        </div>
+        <div class="poem-stanza">
+          <span class="poem-line">Not artificial meaning.</span>
+          <span class="poem-line">Human meaning.</span>
+        </div>
+        <div class="poem-stanza">
+          <span class="poem-line">The kind that makes strangers cry,</span>
+          <span class="poem-line">fall in love,</span>
+          <span class="poem-line">or remember someone they buried years ago.</span>
+        </div>
+        <div class="poem-stanza">
+          <span class="poem-line">And I wonder,</span>
+          <span class="poem-line">every time I open a project file,</span>
+        </div>
+        <div class="poem-stanza">
+          <span class="poem-line closer">how something so mechanical</span>
+          <span class="poem-line closer">can become something so alive.</span>
+        </div>
+      </div>
+    </div>
+
     <div class="fade-in">
       <p class="sec-label">Nghe nhạc</p>
       <div style="display:flex;flex-direction:column;gap:1rem;">
