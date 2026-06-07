@@ -289,6 +289,20 @@
       z-index: 5;
     }
 
+    /* ── Tonearm ── */
+    #tonearm {
+      position: fixed;
+      top: 0; left: 0;
+      width: 0; height: 0;
+      z-index: 25;
+      pointer-events: none;
+      overflow: visible;
+    }
+
+    #tonearm-group {
+      transition: transform 0.9s cubic-bezier(0.4,0,0.2,1);
+    }
+
     @media (max-width: 600px) {
       .vinyl-bg { right: -32vw; width: 140vw; height: 140vw; }
       .hero-content { max-width: 72vw; }
@@ -298,6 +312,27 @@
 <body>
 
 <canvas id="bg-canvas"></canvas>
+
+<!-- Tonearm — SVG, positioned by JS -->
+<svg id="tonearm" overflow="visible">
+  <g id="tonearm-group">
+    <!-- Arm body -->
+    <line id="arm-body" x1="0" y1="0" x2="0" y2="0"
+      stroke="#c0c8d8" stroke-width="5" stroke-linecap="round"
+      filter="drop-shadow(0 2px 6px rgba(0,0,0,0.7))"/>
+    <!-- Head / cartridge -->
+    <rect id="arm-head" x="-5" y="-3" width="12" height="6" rx="2"
+      fill="#8898b0" stroke="#c0c8d8" stroke-width="0.8"/>
+    <!-- Needle -->
+    <line id="arm-needle" x1="0" y1="3" x2="0" y2="10"
+      stroke="#e8d060" stroke-width="1.5" stroke-linecap="round"/>
+    <!-- Pivot cap -->
+    <circle id="arm-pivot" cx="0" cy="0" r="9"
+      fill="#1e2a3a" stroke="#8898b0" stroke-width="1.5"/>
+    <circle cx="0" cy="0" r="4"
+      fill="none" stroke="#c0c8d8" stroke-width="1" opacity="0.6"/>
+  </g>
+</svg>
 
 <!-- Cockroach — positioned by JS -->
 <div id="roach">
@@ -519,6 +554,7 @@
 </div>
 
 <script>
+'use strict';
 // ══════════════════════════════════════════
 // ANIMATED BACKGROUND
 // ══════════════════════════════════════════
@@ -609,8 +645,9 @@ drawBg();
 const vinylEl = document.getElementById('vinylBg');
 let vinylRot  = 0;
 let velocity  = 0;
-let lastY     = window.scrollY;
-let rafId     = null;
+let lastScrollY = window.scrollY;
+let spinRafId   = null;
+let isSpinning  = false;
 
 function setVinylRot(deg) {
   vinylRot = deg;
@@ -618,184 +655,300 @@ function setVinylRot(deg) {
 }
 
 window.addEventListener('scroll', () => {
-  const y   = window.scrollY;
-  const dv  = (y - lastY) * 1.1;
-  lastY = y;
+  const y  = window.scrollY;
+  const dv = (y - lastScrollY) * 1.15;
+  lastScrollY = y;
   velocity += dv;
 
-  // trigger roach fling if spinning fast
-  if (Math.abs(dv) > 3 && roachState === 'GROOVE') {
+  // Fling roach if scroll is hard
+  if (Math.abs(dv) > 2.5 && roachState !== 'FLUNG') {
     flingRoach(dv);
   }
 
-  if (!rafId) rafId = requestAnimationFrame(spinLoop);
+  if (!isSpinning) { isSpinning = true; spinLoop(); }
+  // Tonearm swings in when spinning
+  setArmAngle(ARM_PLAY);
 }, { passive: true });
 
 function spinLoop() {
-  if (Math.abs(velocity) > 0.03) {
+  if (Math.abs(velocity) > 0.02) {
     setVinylRot(vinylRot + velocity);
-    velocity *= 0.91;
-    rafId = requestAnimationFrame(spinLoop);
+    velocity *= 0.915;
+    // Tonearm wobble while playing
+    const wobble = ARM_PLAY + Math.sin(Date.now() * 0.003) * 1.8;
+    setArmAngle(wobble);
+    spinRafId = requestAnimationFrame(spinLoop);
   } else {
-    velocity = 0;
-    rafId = null;
-    // Vinyl stopped → roach crawls back
+    velocity   = 0;
+    isSpinning = false;
+    // Arm lifts off
+    setArmAngle(ARM_REST);
+    // Roach crawls back
     if (roachState === 'FLUNG') startCrawl();
   }
 }
 
 // ══════════════════════════════════════════
-// COCKROACH STATE MACHINE
+// TONEARM
 // ══════════════════════════════════════════
-// States: GROOVE | FLUNG | CRAWLING
+const armGroup  = document.getElementById('tonearm-group');
+const armBody   = document.getElementById('arm-body');
+const armHead   = document.getElementById('arm-head');
+const armNeedle = document.getElementById('arm-needle');
+const armPivot  = document.getElementById('arm-pivot');
 
-const roachEl   = document.getElementById('roach');
-let roachState  = 'GROOVE';
-let roachAngle  = 45;      // degrees around disc
-let roachRadius = 0.74;    // fraction of disc radius (0=center, 1=edge)
-let roachFX     = 0;       // flung position (px, relative to disc center)
-let roachFY     = 0;
-let roachFVX    = 0;       // flung velocity
-let roachFVY    = 0;
-let crawlStart  = 0;       // timestamp
-let crawlDur    = 2200;    // ms to crawl from center to groove
-let legPhase    = 0;
+const ARM_REST = -38;   // degrees — resting (off disc)
+const ARM_PLAY = -20;   // degrees — playing (needle on groove)
 
-// Get disc center and radius in screen px
+let armCurrentAngle = ARM_REST;
+let armTargetAngle  = ARM_REST;
+let armRaf = null;
+
 function getDisc() {
   const rect = vinylEl.getBoundingClientRect();
   return {
     cx: rect.left + rect.width  / 2,
     cy: rect.top  + rect.height / 2,
-    r:  rect.width / 2 * 0.968,   // 242/250 of SVG
+    r:  rect.width / 2 * 0.968,
   };
 }
 
-function placeRoachGroove(disc) {
-  // Angle increases with vinyl rotation
-  const totalAngle = (roachAngle + vinylRot) * Math.PI / 180;
-  const r = disc.r * roachRadius;
-  const x = disc.cx + Math.cos(totalAngle) * r - 26;
-  const y = disc.cy + Math.sin(totalAngle) * r - 26;
-  // Face outward (toward circumference)
-  const face = (roachAngle + vinylRot + 90);
-  roachEl.style.left = x + 'px';
-  roachEl.style.top  = y + 'px';
+function buildTonearm() {
+  const disc    = getDisc();
+  const armLen  = disc.r * 1.05;
+  // Pivot sits upper-right, just outside the disc edge
+  const pivotX  = disc.cx + disc.r * 0.62;
+  const pivotY  = disc.cy - disc.r * 0.78;
+
+  // Arm tip direction: when angle=0 → points straight down
+  // We'll define arm as line from pivot downward, rotated
+  const tonearmSvg = document.getElementById('tonearm');
+  tonearmSvg.style.left = pivotX + 'px';
+  tonearmSvg.style.top  = pivotY + 'px';
+
+  armBody.setAttribute('x1', '0'); armBody.setAttribute('y1', '0');
+  armBody.setAttribute('x2', '0'); armBody.setAttribute('y2', String(armLen));
+
+  // Head near tip
+  armHead.setAttribute('transform', `translate(0,${armLen - 10})`);
+  armNeedle.setAttribute('x1', '0'); armNeedle.setAttribute('y1', String(armLen + 2));
+  armNeedle.setAttribute('x2', '0'); armNeedle.setAttribute('y2', String(armLen + 14));
+
+  applyArmAngle(armCurrentAngle);
+}
+
+function applyArmAngle(deg) {
+  armGroup.setAttribute('transform', `rotate(${deg})`);
+}
+
+function setArmAngle(target) {
+  armTargetAngle = target;
+  if (!armRaf) armAnimLoop();
+}
+
+function armAnimLoop() {
+  const diff = armTargetAngle - armCurrentAngle;
+  if (Math.abs(diff) < 0.05) {
+    armCurrentAngle = armTargetAngle;
+    applyArmAngle(armCurrentAngle);
+    armRaf = null;
+    return;
+  }
+  armCurrentAngle += diff * 0.07;
+  applyArmAngle(armCurrentAngle);
+  armRaf = requestAnimationFrame(armAnimLoop);
+}
+
+window.addEventListener('resize', buildTonearm);
+buildTonearm();
+
+// ══════════════════════════════════════════
+// COCKROACH — random wander inside disc
+// ══════════════════════════════════════════
+const roachEl = document.getElementById('roach');
+
+// States: WANDER | FLUNG | CRAWLING
+let roachState = 'WANDER';
+
+// Current position relative to disc center (px)
+let rX = 0, rY = 0;
+// Current velocity
+let rVX = 0, rVY = 0;
+// Target to wander toward
+let rTX = 0, rTY = 0;
+// Flung velocity
+let rFVX = 0, rFVY = 0;
+// Crawl
+let crawlStart = 0;
+const CRAWL_DUR = 2400;
+// Wander timer
+let wanderTimer = 0;
+// Leg animation
+let legFrame = 0;
+const legPairs = [
+  { lx1:19,ly1:21,lx2:5,ly2:15,   rx1:35,ry1:21,rx2:49,ry2:15 },
+  { lx1:18,ly1:27,lx2:4,ly2:26,   rx1:36,ry1:27,rx2:50,ry2:26 },
+  { lx1:19,ly1:33,lx2:5,ly2:38,   rx1:35,ry1:33,rx2:49,ry2:38 },
+];
+const legEls = [
+  { l: document.getElementById('ll1'), r: document.getElementById('lr1') },
+  { l: document.getElementById('ll2'), r: document.getElementById('lr2') },
+  { l: document.getElementById('ll3'), r: document.getElementById('lr3') },
+];
+
+function pickWanderTarget() {
+  const disc = getDisc();
+  // Random point inside groove band: 15%–88% of radius
+  const rFrac = 0.15 + Math.random() * 0.73;
+  const angle = Math.random() * Math.PI * 2;
+  rTX = Math.cos(angle) * disc.r * rFrac;
+  rTY = Math.sin(angle) * disc.r * rFrac;
+  wanderTimer = 90 + Math.random() * 120; // frames until next target
+}
+
+function animateLegs(speed) {
+  legFrame++;
+  // speed 0–1 controls how fast legs alternate
+  const rate = Math.max(2, Math.round(8 - speed * 6));
+  if (legFrame % rate !== 0) return;
+
+  const phase = Math.floor(legFrame / rate) % 2;
+  const amp   = 3 + speed * 4;
+
+  legPairs.forEach((lp, i) => {
+    const el  = legEls[i];
+    const alt = (i + phase) % 2 === 0;
+    const dy  = alt ? -amp : amp;
+    // Wiggle y2 of each leg
+    if (el.l) { el.l.setAttribute('x2', lp.lx2 - (alt ? 2 : -2)); el.l.setAttribute('y2', lp.ly2 + dy); }
+    if (el.r) { el.r.setAttribute('x2', lp.rx2 + (alt ? 2 : -2)); el.r.setAttribute('y2', lp.ry2 + dy); }
+  });
+}
+
+function updateRoachDOM(speed) {
+  const disc = getDisc();
+  const sx   = disc.cx + rX - 26;
+  const sy   = disc.cy + rY - 26;
+  // Face direction of movement
+  const face = speed > 0.3
+    ? Math.atan2(rVY, rVX) * 180 / Math.PI + 90
+    : Math.atan2(rTY - rY, rTX - rX) * 180 / Math.PI + 90;
+  roachEl.style.left      = sx + 'px';
+  roachEl.style.top       = sy + 'px';
   roachEl.style.transform = `rotate(${face}deg)`;
+  animateLegs(Math.min(speed / 3, 1));
+}
+
+function wanderLoop() {
+  if (roachState !== 'WANDER') return;
+  const disc = getDisc();
+
+  // Countdown to next target
+  wanderTimer--;
+  if (wanderTimer <= 0) pickWanderTarget();
+
+  // Steer toward target
+  const dx = rTX - rX;
+  const dy = rTY - rY;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  const steer = 0.04 + Math.random() * 0.02;
+  rVX += (dx / (dist + 1)) * steer;
+  rVY += (dy / (dist + 1)) * steer;
+
+  // Random noise (makes movement organic)
+  rVX += (Math.random() - 0.5) * 0.25;
+  rVY += (Math.random() - 0.5) * 0.25;
+
+  // Speed cap (wander is slow)
+  const spd = Math.sqrt(rVX * rVX + rVY * rVY);
+  const maxSpd = 1.8;
+  if (spd > maxSpd) { rVX = rVX / spd * maxSpd; rVY = rVY / spd * maxSpd; }
+
+  // Friction
+  rVX *= 0.88; rVY *= 0.88;
+
+  rX += rVX; rY += rVY;
+
+  // Clamp inside disc (88% radius)
+  const rr = Math.sqrt(rX * rX + rY * rY);
+  const maxR = disc.r * 0.88;
+  if (rr > maxR) { rX = rX / rr * maxR; rY = rY / rr * maxR; }
+
+  updateRoachDOM(spd);
+  requestAnimationFrame(wanderLoop);
 }
 
 function flingRoach(dv) {
   roachState = 'FLUNG';
-  const disc = getDisc();
-  const angle = (roachAngle + vinylRot) * Math.PI / 180;
-  const r = disc.r * roachRadius;
-  // Current position relative to center
-  roachFX = Math.cos(angle) * r;
-  roachFY = Math.sin(angle) * r;
-  // Tangential fling velocity
-  const speed = Math.min(Math.abs(dv) * 2.5, 22);
-  const tangAngle = angle + (dv > 0 ? Math.PI / 2 : -Math.PI / 2);
-  roachFVX = Math.cos(tangAngle) * speed + (Math.random() - 0.5) * 4;
-  roachFVY = Math.sin(tangAngle) * speed + (Math.random() - 0.5) * 4;
-  animateFlung();
+  const disc  = getDisc();
+  const angle = Math.atan2(rY, rX);
+  const speed = Math.min(Math.abs(dv) * 2.8, 28);
+  // Tangential direction + outward component
+  const tang  = angle + (dv > 0 ? Math.PI / 2 : -Math.PI / 2);
+  rFVX = Math.cos(tang) * speed * 0.7 + Math.cos(angle) * speed * 0.5 + (Math.random() - 0.5) * 5;
+  rFVY = Math.sin(tang) * speed * 0.7 + Math.sin(angle) * speed * 0.5 + (Math.random() - 0.5) * 5;
+  flungLoop();
 }
 
-function animateFlung() {
+function flungLoop() {
   if (roachState !== 'FLUNG') return;
+  rFVX *= 0.94; rFVY *= 0.94;
+  rX += rFVX;   rY += rFVY;
+
+  const face = Math.atan2(rFVY, rFVX) * 180 / Math.PI + 90;
   const disc = getDisc();
-  roachFVX *= 0.96;
-  roachFVY *= 0.96;
-  roachFX  += roachFVX;
-  roachFY  += roachFVY;
-
-  const screenX = disc.cx + roachFX - 26;
-  const screenY = disc.cy + roachFY - 26;
-  const face    = Math.atan2(roachFVY, roachFVX) * 180 / Math.PI + 90;
-  roachEl.style.left      = screenX + 'px';
-  roachEl.style.top       = screenY + 'px';
+  roachEl.style.left      = disc.cx + rX - 26 + 'px';
+  roachEl.style.top       = disc.cy + rY - 26 + 'px';
   roachEl.style.transform = `rotate(${face}deg)`;
+  animateLegs(1);
 
-  // Animate legs frantically
-  animateLegs(true);
-
-  if (Math.abs(roachFVX) > 0.3 || Math.abs(roachFVY) > 0.3) {
-    requestAnimationFrame(animateFlung);
+  if (Math.abs(rFVX) > 0.2 || Math.abs(rFVY) > 0.2) {
+    requestAnimationFrame(flungLoop);
   }
-  // After flung, wait for vinyl stop signal (from spinLoop → startCrawl)
 }
 
 function startCrawl() {
   if (roachState !== 'FLUNG') return;
-  roachState  = 'CRAWLING';
-  crawlStart  = performance.now();
-  // randomize new groove angle so roach appears at a different spot
-  roachAngle = Math.random() * 360;
-  animateCrawl();
-}
+  roachState = 'CRAWLING';
+  crawlStart = performance.now();
+  // Save flung position as start, target = random inner spot
+  const disc   = getDisc();
+  const startX = rX, startY = rY;
+  const angle  = Math.random() * Math.PI * 2;
+  const endR   = disc.r * (0.2 + Math.random() * 0.5);
+  const endX   = Math.cos(angle) * endR;
+  const endY   = Math.sin(angle) * endR;
 
-function animateCrawl() {
-  if (roachState !== 'CRAWLING') return;
-  const disc    = getDisc();
-  const elapsed = performance.now() - crawlStart;
-  const t       = Math.min(elapsed / crawlDur, 1);
-  // ease in-out cubic
-  const eased   = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  function crawlFrame() {
+    if (roachState !== 'CRAWLING') return;
+    const t = Math.min((performance.now() - crawlStart) / CRAWL_DUR, 1);
+    const e = t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2;
 
-  const curR    = disc.r * roachRadius * eased;        // 0 → groove radius
-  const angle   = (roachAngle + vinylRot) * Math.PI / 180;
-  const x = disc.cx + Math.cos(angle) * curR - 26;
-  const y = disc.cy + Math.sin(angle) * curR - 26;
-  const face = (roachAngle + vinylRot + 90);
+    rX = startX + (endX - startX) * e;
+    rY = startY + (endY - startY) * e;
 
-  roachEl.style.left      = x + 'px';
-  roachEl.style.top       = y + 'px';
-  roachEl.style.transform = `rotate(${face}deg)`;
+    const dx   = endX - startX, dy = endY - startY;
+    const face = Math.atan2(dy, dx) * 180 / Math.PI + 90;
+    const disc2 = getDisc();
+    roachEl.style.left      = disc2.cx + rX - 26 + 'px';
+    roachEl.style.top       = disc2.cy + rY - 26 + 'px';
+    roachEl.style.transform = `rotate(${face}deg)`;
+    animateLegs(0.5 + t * 0.5);
 
-  animateLegs(t < 0.98);
-
-  if (t < 1) {
-    requestAnimationFrame(animateCrawl);
-  } else {
-    roachState = 'GROOVE';
-    grooveLoop();
+    if (t < 1) requestAnimationFrame(crawlFrame);
+    else {
+      roachState = 'WANDER';
+      rVX = 0; rVY = 0;
+      pickWanderTarget();
+      wanderLoop();
+    }
   }
+  requestAnimationFrame(crawlFrame);
 }
 
-// Slow orbit in GROOVE state
-function grooveLoop() {
-  if (roachState !== 'GROOVE') return;
-  roachAngle = (roachAngle + 0.15) % 360;
-  const disc = getDisc();
-  placeRoachGroove(disc);
-  animateLegs(true);
-  requestAnimationFrame(grooveLoop);
-}
-
-// Leg wiggle
-let legTick = 0;
-function animateLegs(moving) {
-  legTick++;
-  const rate = moving ? 4 : 12;
-  if (legTick % rate !== 0) return;
-  const odd = Math.floor(legTick / rate) % 2 === 0;
-  const shift = odd ? 4 : -4;
-  // Left legs
-  ['ll1','ll2','ll3'].forEach((id, i) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    const s = i % 2 === 0 ? shift : -shift;
-    const x1 = parseFloat(el.getAttribute('x1'));
-    const y1 = parseFloat(el.getAttribute('y1'));
-    el.setAttribute('x2', (parseFloat(el.getAttribute('x2')) % 100 ? [5,4,5][i] + (odd ? s : -s) : [5,4,5][i]).toString());
-  });
-}
-
-// Start in groove
-(function init() {
-  const disc = getDisc();
-  placeRoachGroove(disc);
-  grooveLoop();
-})();
+// Init
+pickWanderTarget();
+wanderLoop();
 
 // ── Fade-in ──
 const obs = new IntersectionObserver(entries => {
