@@ -312,35 +312,75 @@
 <!-- Tonearm — full-viewport SVG, coordinates set by JS -->
 <svg id="tonearm">
   <defs>
-    <filter id="arm-shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="rgba(0,0,0,0.7)"/>
+    <filter id="arm-shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="2" dy="4" stdDeviation="5" flood-color="rgba(0,0,0,0.75)"/>
     </filter>
+    <!-- Metallic arm gradient (applied along arm direction via JS) -->
+    <linearGradient id="armGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="#c8d4e0"/>
+      <stop offset="35%"  stop-color="#eef2f6"/>
+      <stop offset="65%"  stop-color="#a8b8cc"/>
+      <stop offset="100%" stop-color="#6a7a90"/>
+    </linearGradient>
+    <!-- Pivot base gradient -->
+    <radialGradient id="pivotGrad" cx="38%" cy="32%" r="60%">
+      <stop offset="0%"   stop-color="#3a4a60"/>
+      <stop offset="100%" stop-color="#0c1520"/>
+    </radialGradient>
+    <!-- Counterweight gradient -->
+    <radialGradient id="weightGrad" cx="35%" cy="30%" r="65%">
+      <stop offset="0%"   stop-color="#4a5a70"/>
+      <stop offset="100%" stop-color="#151e2a"/>
+    </radialGradient>
   </defs>
-  <!-- Arm rod -->
+
+  <!-- Pivot base — large dark platform circle -->
+  <circle id="arm-pivot" cx="0" cy="0" r="28"
+    fill="url(#pivotGrad)" stroke="#3a4a5e" stroke-width="2"
+    filter="url(#arm-shadow)"/>
+  <!-- Pivot top ring highlight -->
+  <circle id="arm-pivot-inner" cx="0" cy="0" r="10"
+    fill="#1a2535" stroke="#8090a8" stroke-width="2"/>
+  <!-- Tiny center screw -->
+  <circle id="arm-pivot-screw" cx="0" cy="0" r="4"
+    fill="#0a1018" stroke="#60708a" stroke-width="1"/>
+
+  <!-- Arm rod — thick tapered look via two lines -->
+  <line id="arm-body-shadow" x1="0" y1="0" x2="0" y2="0"
+    stroke="rgba(0,0,0,0.5)" stroke-width="11" stroke-linecap="round"/>
   <line id="arm-body" x1="0" y1="0" x2="0" y2="0"
-    stroke="url(#armGrad)" stroke-width="6" stroke-linecap="round"
-    filter="url(#arm-shadow)"/>
-  <!-- Headshell / cartridge -->
-  <g id="arm-head">
-    <rect x="-7" y="-4" width="16" height="8" rx="3"
-      fill="#6b7a94" stroke="#a0b0c8" stroke-width="1"/>
-  </g>
-  <!-- Stylus needle (gold) -->
-  <line id="arm-needle" x1="0" y1="0" x2="0" y2="0"
-    stroke="#f0d040" stroke-width="2" stroke-linecap="round"/>
-  <!-- Counterweight (back of arm) -->
+    stroke="url(#armGrad)" stroke-width="7" stroke-linecap="round"/>
+  <!-- Highlight stripe along arm -->
+  <line id="arm-shine" x1="0" y1="0" x2="0" y2="0"
+    stroke="rgba(255,255,255,0.22)" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Counterweight (thick cylinder look) -->
+  <circle id="arm-weight-outer" cx="0" cy="0" r="13"
+    fill="url(#weightGrad)" stroke="#3a4a60" stroke-width="2"/>
   <circle id="arm-weight" cx="0" cy="0" r="8"
-    fill="#2a3a50" stroke="#6b7a94" stroke-width="1.5"/>
-  <!-- Pivot -->
-  <circle id="arm-pivot" cx="0" cy="0" r="11"
-    fill="#1a2535" stroke="#8898b0" stroke-width="2"
-    filter="url(#arm-shadow)"/>
-  <circle id="arm-pivot-inner" cx="0" cy="0" r="5"
-    fill="#0d1825" stroke="#c0c8d8" stroke-width="1"/>
-  <linearGradient id="armGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-    <stop offset="0%" stop-color="#d0dae8"/>
-    <stop offset="100%" stop-color="#7888a0"/>
-  </linearGradient>
+    fill="#0e1822" stroke="#5a6a80" stroke-width="1.5"/>
+
+  <!-- Headshell bend region (kink at end of arm) -->
+  <line id="arm-kink" x1="0" y1="0" x2="0" y2="0"
+    stroke="#8898b0" stroke-width="5" stroke-linecap="round"/>
+
+  <!-- Headshell body -->
+  <g id="arm-head">
+    <!-- Main shell body -->
+    <rect x="-5" y="0" width="11" height="22" rx="3"
+      fill="#4a5568" stroke="#8898b0" stroke-width="1.2"/>
+    <!-- Top cap -->
+    <rect x="-5" y="-3" width="11" height="6" rx="2"
+      fill="#606880" stroke="#9aabb8" stroke-width="1"/>
+    <!-- Ventilation slots -->
+    <line x1="-3" y1="8"  x2="3" y2="8"  stroke="#2a3545" stroke-width="1"/>
+    <line x1="-3" y1="12" x2="3" y2="12" stroke="#2a3545" stroke-width="1"/>
+    <line x1="-3" y1="16" x2="3" y2="16" stroke="#2a3545" stroke-width="1"/>
+  </g>
+
+  <!-- Stylus needle -->
+  <line id="arm-needle" x1="0" y1="0" x2="0" y2="0"
+    stroke="#d4aa30" stroke-width="2" stroke-linecap="round"/>
 </svg>
 
 <!-- Cockroach — positioned by JS -->
@@ -700,17 +740,23 @@ function spinLoop() {
 // ══════════════════════════════════════════
 // TONEARM
 // ══════════════════════════════════════════
-const armBody        = document.getElementById('arm-body');
-const armHeadEl      = document.getElementById('arm-head');
-const armNeedle      = document.getElementById('arm-needle');
-const armPivotEl     = document.getElementById('arm-pivot');
-const armPivotInner  = document.getElementById('arm-pivot-inner');
-const armWeightEl    = document.getElementById('arm-weight');
+// Tonearm elements
+const armBodyEl       = document.getElementById('arm-body');
+const armBodyShadow   = document.getElementById('arm-body-shadow');
+const armShineEl      = document.getElementById('arm-shine');
+const armHeadEl       = document.getElementById('arm-head');
+const armNeedleEl     = document.getElementById('arm-needle');
+const armKinkEl       = document.getElementById('arm-kink');
+const armPivotEl      = document.getElementById('arm-pivot');
+const armPivotInner   = document.getElementById('arm-pivot-inner');
+const armPivotScrew   = document.getElementById('arm-pivot-screw');
+const armWeightEl     = document.getElementById('arm-weight');
+const armWeightOuter  = document.getElementById('arm-weight-outer');
 
-// Angle measured from "pointing straight down from pivot" (0°)
-// Positive = clockwise (toward disc center), Negative = counter-clockwise (away)
-const ARM_REST = -38;   // lifted off, resting to the right
-const ARM_PLAY = 10;    // needle touching outer groove
+// Angle from pivot: 0° = pointing straight down
+// Negative = swung right (rest), Positive = swung left over disc (play)
+const ARM_REST = -38;
+const ARM_PLAY = 12;
 
 let armAngle       = ARM_REST;
 let armAngleTarget = ARM_REST;
@@ -726,46 +772,81 @@ function getDisc() {
   };
 }
 
+function setAttr(el, attrs) {
+  for (const [k,v] of Object.entries(attrs)) el.setAttribute(k, v);
+}
+
 function buildTonearm() {
   const disc = getDisc();
-  // Pivot: upper-right quadrant, just outside disc edge
-  armPX    = disc.cx + disc.r * 0.60;
-  armPY    = disc.cy - disc.r * 0.82;
-  armLenPx = disc.r * 0.90;
+  // Pivot upper-right, just outside disc
+  armPX    = disc.cx + disc.r * 0.62;
+  armPY    = disc.cy - disc.r * 0.80;
+  armLenPx = disc.r * 0.92;
   renderArm();
 }
 
 function renderArm() {
   const rad = armAngle * Math.PI / 180;
-  // Tip of arm
-  const tx = armPX + Math.sin(rad) * armLenPx;
-  const ty = armPY + Math.cos(rad) * armLenPx;
-  // Counterweight: opposite direction from tip
-  const wx = armPX - Math.sin(rad) * armLenPx * 0.22;
-  const wy = armPY - Math.cos(rad) * armLenPx * 0.22;
+  const sin = Math.sin(rad), cos = Math.cos(rad);
 
-  // Arm rod
-  armBody.setAttribute('x1', wx); armBody.setAttribute('y1', wy);
-  armBody.setAttribute('x2', tx); armBody.setAttribute('y2', ty);
+  // Main arm tip position
+  const tx = armPX + sin * armLenPx;
+  const ty = armPY + cos * armLenPx;
 
-  // Counterweight ball
-  armWeightEl.setAttribute('cx', wx); armWeightEl.setAttribute('cy', wy);
+  // Rod starts a bit past pivot (counterweight side ends before pivot visually)
+  const rodStartFrac = 0.18; // how far back counterweight is from pivot
+  const rx = armPX - sin * armLenPx * rodStartFrac;
+  const ry = armPY - cos * armLenPx * rodStartFrac;
 
-  // Headshell rotated to match arm angle
+  // Shine line slightly offset perpendicular for 3D feel
+  const perpX = -cos * 1.5, perpY = sin * 1.5;
+
+  // Headshell kink: arm bends slightly at the last ~15% — simulate with a short angled segment
+  const kinkFrac = 0.88;
+  const kx = armPX + sin * armLenPx * kinkFrac;
+  const ky = armPY + cos * armLenPx * kinkFrac;
+  // Kink end (headshell mount): offset perpendicular ~8px
+  const kex = kx - cos * 8;
+  const key = ky + sin * 8;
+
+  // Counterweight position (behind pivot)
+  const wx = armPX - sin * armLenPx * 0.20;
+  const wy = armPY - cos * armLenPx * 0.20;
+
+  // Needle tip (extends ~18px beyond headshell mount, in arm direction)
+  const nx2 = kex + sin * 18;
+  const ny2 = key + cos * 18;
+
+  // --- Draw shadow first (under everything) ---
+  setAttr(armBodyShadow, { x1: rx+2, y1: ry+3, x2: kx+2, y2: ky+3 });
+
+  // --- Main arm rod (pivot to kink) ---
+  setAttr(armBodyEl, { x1: rx, y1: ry, x2: kx, y2: ky });
+
+  // --- Shine stripe ---
+  setAttr(armShineEl, {
+    x1: rx + perpX, y1: ry + perpY,
+    x2: kx + perpX, y2: ky + perpY
+  });
+
+  // --- Kink segment (headshell bend) ---
+  setAttr(armKinkEl, { x1: kx, y1: ky, x2: kex, y2: key });
+
+  // --- Headshell: translate to mount point, rotate to arm direction ---
   armHeadEl.setAttribute('transform',
-    `translate(${tx},${ty}) rotate(${armAngle + 90})`);
+    `translate(${kex},${key}) rotate(${armAngle})`);
 
-  // Stylus needle extends past tip
-  const nx1 = tx + Math.sin(rad) * 4;
-  const ny1 = ty + Math.cos(rad) * 4;
-  const nx2 = tx + Math.sin(rad) * 18;
-  const ny2 = ty + Math.cos(rad) * 18;
-  armNeedle.setAttribute('x1', nx1); armNeedle.setAttribute('y1', ny1);
-  armNeedle.setAttribute('x2', nx2); armNeedle.setAttribute('y2', ny2);
+  // --- Needle ---
+  setAttr(armNeedleEl, { x1: kex, y1: key, x2: nx2, y2: ny2 });
 
-  // Pivot circles
-  armPivotEl.setAttribute('cx', armPX);    armPivotEl.setAttribute('cy', armPY);
-  armPivotInner.setAttribute('cx', armPX); armPivotInner.setAttribute('cy', armPY);
+  // --- Counterweight ---
+  setAttr(armWeightOuter, { cx: wx, cy: wy });
+  setAttr(armWeightEl,    { cx: wx, cy: wy });
+
+  // --- Pivot ---
+  setAttr(armPivotEl,    { cx: armPX, cy: armPY });
+  setAttr(armPivotInner, { cx: armPX, cy: armPY });
+  setAttr(armPivotScrew, { cx: armPX, cy: armPY });
 }
 
 function setArmAngle(target) {
@@ -781,14 +862,13 @@ function armAnimLoop() {
     armRaf = null;
     return;
   }
-  armAngle += diff * 0.06;
+  armAngle += diff * 0.055;
   renderArm();
   armRaf = requestAnimationFrame(armAnimLoop);
 }
 
 window.addEventListener('resize', buildTonearm);
-// Wait for layout then build
-requestAnimationFrame(() => { requestAnimationFrame(buildTonearm); });
+requestAnimationFrame(() => requestAnimationFrame(buildTonearm));
 
 // ══════════════════════════════════════════
 // COCKROACH — random wander inside disc
