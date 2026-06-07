@@ -101,6 +101,37 @@
       text-shadow: 0 0 60px rgba(255,171,64,0.6);
     }
 
+    .hero-stats {
+      display: flex;
+      align-items: center;
+      gap: 1.2rem;
+      margin-top: 0.25rem;
+    }
+
+    .hstat { display: flex; flex-direction: column; gap: 2px; }
+
+    .hstat-num {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.7rem;
+      line-height: 1;
+      color: #ffab40;
+      text-shadow: 0 0 30px rgba(255,171,64,0.5);
+    }
+
+    .hstat-label {
+      font-size: 0.62rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.45);
+    }
+
+    .hstat-divider {
+      width: 1px;
+      height: 36px;
+      background: rgba(255,255,255,0.15);
+      flex-shrink: 0;
+    }
+
     .tagline {
       font-family: 'Barlow Condensed', sans-serif;
       font-size: clamp(1rem, 2.5vw, 1.4rem);
@@ -343,6 +374,18 @@
     <div class="artist-initial">NV</div>
     <div class="artist-subtitle">So Lit</div>
     <p class="tagline">Chút di sản văn hóa</p>
+
+    <div class="hero-stats">
+      <div class="hstat">
+        <span class="hstat-num">1M+</span>
+        <span class="hstat-label">SoundCloud streams</span>
+      </div>
+      <div class="hstat-divider"></div>
+      <div class="hstat">
+        <span class="hstat-num">1.2M+</span>
+        <span class="hstat-label">TikTok sound uses</span>
+      </div>
+    </div>
 
     <div class="hero-links">
       <a href="https://www.tiktok.com/@nv26123" target="_blank" rel="noopener" class="hero-link-btn">
