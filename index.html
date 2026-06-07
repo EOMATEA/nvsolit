@@ -312,75 +312,113 @@
 <!-- Tonearm — full-viewport SVG, coordinates set by JS -->
 <svg id="tonearm">
   <defs>
-    <filter id="arm-shadow" x="-30%" y="-30%" width="160%" height="160%">
-      <feDropShadow dx="2" dy="4" stdDeviation="5" flood-color="rgba(0,0,0,0.75)"/>
+    <filter id="arm-drop-shadow" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="3" dy="6" stdDeviation="6" flood-color="rgba(0,0,0,0.8)"/>
     </filter>
-    <!-- Metallic arm gradient (applied along arm direction via JS) -->
-    <linearGradient id="armGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%"   stop-color="#c8d4e0"/>
-      <stop offset="35%"  stop-color="#eef2f6"/>
-      <stop offset="65%"  stop-color="#a8b8cc"/>
-      <stop offset="100%" stop-color="#6a7a90"/>
+    <filter id="pivot-shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="2" dy="4" stdDeviation="4" flood-color="rgba(0,0,0,0.9)"/>
+    </filter>
+    <!-- Dark gunmetal tube gradient -->
+    <linearGradient id="tubeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="#1a1e24"/>
+      <stop offset="30%"  stop-color="#5a6070"/>
+      <stop offset="55%"  stop-color="#8a9098"/>
+      <stop offset="75%"  stop-color="#4a5060"/>
+      <stop offset="100%" stop-color="#1a1e24"/>
     </linearGradient>
-    <!-- Pivot base gradient -->
-    <radialGradient id="pivotGrad" cx="38%" cy="32%" r="60%">
-      <stop offset="0%"   stop-color="#3a4a60"/>
-      <stop offset="100%" stop-color="#0c1520"/>
+    <!-- Pivot base: large matte-black disc -->
+    <radialGradient id="pivotBaseGrad" cx="40%" cy="35%" r="65%">
+      <stop offset="0%"   stop-color="#2a2e36"/>
+      <stop offset="60%"  stop-color="#111418"/>
+      <stop offset="100%" stop-color="#080a0d"/>
     </radialGradient>
-    <!-- Counterweight gradient -->
-    <radialGradient id="weightGrad" cx="35%" cy="30%" r="65%">
-      <stop offset="0%"   stop-color="#4a5a70"/>
-      <stop offset="100%" stop-color="#151e2a"/>
+    <!-- Pivot chrome knob -->
+    <radialGradient id="knobGrad" cx="35%" cy="28%" r="60%">
+      <stop offset="0%"   stop-color="#d8dde4"/>
+      <stop offset="40%"  stop-color="#8a9098"/>
+      <stop offset="100%" stop-color="#3a3e46"/>
     </radialGradient>
+    <!-- Connector cylinder gradient -->
+    <linearGradient id="connGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="#28292e"/>
+      <stop offset="40%"  stop-color="#58595e"/>
+      <stop offset="70%"  stop-color="#38393e"/>
+      <stop offset="100%" stop-color="#18191e"/>
+    </linearGradient>
+    <!-- Headshell dark -->
+    <linearGradient id="headGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%"   stop-color="#28292e"/>
+      <stop offset="100%" stop-color="#111215"/>
+    </linearGradient>
   </defs>
 
-  <!-- Pivot base — large dark platform circle -->
-  <circle id="arm-pivot" cx="0" cy="0" r="28"
-    fill="url(#pivotGrad)" stroke="#3a4a5e" stroke-width="2"
-    filter="url(#arm-shadow)"/>
-  <!-- Pivot top ring highlight -->
-  <circle id="arm-pivot-inner" cx="0" cy="0" r="10"
-    fill="#1a2535" stroke="#8090a8" stroke-width="2"/>
-  <!-- Tiny center screw -->
-  <circle id="arm-pivot-screw" cx="0" cy="0" r="4"
-    fill="#0a1018" stroke="#60708a" stroke-width="1"/>
+  <!-- ── S-CURVE ARM TUBE (shadow layer) ── -->
+  <path id="arm-tube-shadow" d="M0,0 C0,0 0,0 0,0"
+    fill="none" stroke="rgba(0,0,0,0.6)" stroke-width="14"
+    stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Main tube -->
+  <path id="arm-tube" d="M0,0 C0,0 0,0 0,0"
+    fill="none" stroke="url(#tubeGrad)" stroke-width="9"
+    stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Highlight shimmer on tube -->
+  <path id="arm-tube-shine" d="M0,0 C0,0 0,0 0,0"
+    fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="3"
+    stroke-linecap="round" stroke-linejoin="round"/>
 
-  <!-- Arm rod — thick tapered look via two lines -->
-  <line id="arm-body-shadow" x1="0" y1="0" x2="0" y2="0"
-    stroke="rgba(0,0,0,0.5)" stroke-width="11" stroke-linecap="round"/>
-  <line id="arm-body" x1="0" y1="0" x2="0" y2="0"
-    stroke="url(#armGrad)" stroke-width="7" stroke-linecap="round"/>
-  <!-- Highlight stripe along arm -->
-  <line id="arm-shine" x1="0" y1="0" x2="0" y2="0"
-    stroke="rgba(255,255,255,0.22)" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- ── COUNTERWEIGHT (behind pivot on arm) ── -->
+  <!-- Outer ring -->
+  <circle id="arm-cw-outer" cx="0" cy="0" r="15"
+    fill="#1a1c20" stroke="#3a3c42" stroke-width="2"/>
+  <!-- Inner ring -->
+  <circle id="arm-cw-inner" cx="0" cy="0" r="9"
+    fill="#0d0e10" stroke="#4a4c52" stroke-width="1.5"/>
 
-  <!-- Counterweight (thick cylinder look) -->
-  <circle id="arm-weight-outer" cx="0" cy="0" r="13"
-    fill="url(#weightGrad)" stroke="#3a4a60" stroke-width="2"/>
-  <circle id="arm-weight" cx="0" cy="0" r="8"
-    fill="#0e1822" stroke="#5a6a80" stroke-width="1.5"/>
+  <!-- ── CONNECTOR CYLINDER (where tube meets headshell) ── -->
+  <rect id="arm-connector" x="0" y="0" width="1" height="1" rx="3"
+    fill="url(#connGrad)" stroke="#4a4c52" stroke-width="1"/>
 
-  <!-- Headshell bend region (kink at end of arm) -->
-  <line id="arm-kink" x1="0" y1="0" x2="0" y2="0"
-    stroke="#8898b0" stroke-width="5" stroke-linecap="round"/>
-
-  <!-- Headshell body -->
+  <!-- ── HEADSHELL body ── -->
   <g id="arm-head">
-    <!-- Main shell body -->
-    <rect x="-5" y="0" width="11" height="22" rx="3"
-      fill="#4a5568" stroke="#8898b0" stroke-width="1.2"/>
-    <!-- Top cap -->
-    <rect x="-5" y="-3" width="11" height="6" rx="2"
-      fill="#606880" stroke="#9aabb8" stroke-width="1"/>
-    <!-- Ventilation slots -->
-    <line x1="-3" y1="8"  x2="3" y2="8"  stroke="#2a3545" stroke-width="1"/>
-    <line x1="-3" y1="12" x2="3" y2="12" stroke="#2a3545" stroke-width="1"/>
-    <line x1="-3" y1="16" x2="3" y2="16" stroke="#2a3545" stroke-width="1"/>
+    <!-- Main flat body -->
+    <rect x="-9" y="-4" width="32" height="14" rx="3"
+      fill="url(#headGrad)" stroke="#3a3c42" stroke-width="1.2"/>
+    <!-- Oval mounting holes (3 holes like in photo) -->
+    <ellipse cx="2"  cy="3" rx="3" ry="4.5" fill="#080a0d" stroke="#2a2c30" stroke-width="0.8"/>
+    <ellipse cx="10" cy="3" rx="3" ry="4.5" fill="#080a0d" stroke="#2a2c30" stroke-width="0.8"/>
+    <ellipse cx="18" cy="3" rx="3" ry="4.5" fill="#080a0d" stroke="#2a2c30" stroke-width="0.8"/>
+    <!-- Front edge highlight -->
+    <line x1="-9" y1="-4" x2="23" y2="-4" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
   </g>
 
-  <!-- Stylus needle -->
+  <!-- ── CARTRIDGE body ── -->
+  <g id="arm-cartridge">
+    <rect x="-4" y="-4" width="14" height="10" rx="2"
+      fill="#0e0f12" stroke="#28292e" stroke-width="1"/>
+    <!-- Cantilever/needle mount -->
+    <rect x="2" y="5" width="4" height="6" rx="1" fill="#1a1c20"/>
+  </g>
+
+  <!-- ── STYLUS NEEDLE ── -->
   <line id="arm-needle" x1="0" y1="0" x2="0" y2="0"
-    stroke="#d4aa30" stroke-width="2" stroke-linecap="round"/>
+    stroke="#c87020" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- ── PIVOT BASE — large matte-black platform disc ── -->
+  <circle id="arm-pivot-base" cx="0" cy="0" r="38"
+    fill="url(#pivotBaseGrad)" stroke="#1e2028" stroke-width="2"
+    filter="url(#pivot-shadow)"/>
+  <!-- Pivot chrome knob (center of platform) -->
+  <circle id="arm-pivot-knob" cx="0" cy="0" r="14"
+    fill="url(#knobGrad)" stroke="#606268" stroke-width="1.5"/>
+  <!-- Knob center dot -->
+  <circle id="arm-pivot-dot" cx="0" cy="0" r="4"
+    fill="#1a1c20" stroke="#8a8c90" stroke-width="1"/>
+  <!-- Knob radial lines (brushed metal detail) -->
+  <g id="arm-pivot-lines" stroke="rgba(0,0,0,0.3)" stroke-width="0.8">
+    <line x1="0" y1="-14" x2="0" y2="-5"/>
+    <line x1="0" y1="5"  x2="0" y2="14"/>
+    <line x1="-14" y1="0" x2="-5" y2="0"/>
+    <line x1="5"  y1="0" x2="14" y2="0"/>
+  </g>
 </svg>
 
 <!-- Cockroach — positioned by JS -->
@@ -740,23 +778,27 @@ function spinLoop() {
 // ══════════════════════════════════════════
 // TONEARM
 // ══════════════════════════════════════════
-// Tonearm elements
-const armBodyEl       = document.getElementById('arm-body');
-const armBodyShadow   = document.getElementById('arm-body-shadow');
-const armShineEl      = document.getElementById('arm-shine');
-const armHeadEl       = document.getElementById('arm-head');
-const armNeedleEl     = document.getElementById('arm-needle');
-const armKinkEl       = document.getElementById('arm-kink');
-const armPivotEl      = document.getElementById('arm-pivot');
-const armPivotInner   = document.getElementById('arm-pivot-inner');
-const armPivotScrew   = document.getElementById('arm-pivot-screw');
-const armWeightEl     = document.getElementById('arm-weight');
-const armWeightOuter  = document.getElementById('arm-weight-outer');
+// ══════════════════════════════════════════
+// TONEARM — S-curve realistic
+// ══════════════════════════════════════════
+const armTubeShadow  = document.getElementById('arm-tube-shadow');
+const armTube        = document.getElementById('arm-tube');
+const armTubeShine   = document.getElementById('arm-tube-shine');
+const armHeadEl      = document.getElementById('arm-head');
+const armCartridge   = document.getElementById('arm-cartridge');
+const armNeedleEl    = document.getElementById('arm-needle');
+const armConnector   = document.getElementById('arm-connector');
+const armCwOuter     = document.getElementById('arm-cw-outer');
+const armCwInner     = document.getElementById('arm-cw-inner');
+const armPivotBase   = document.getElementById('arm-pivot-base');
+const armPivotKnob   = document.getElementById('arm-pivot-knob');
+const armPivotDot    = document.getElementById('arm-pivot-dot');
+const armPivotLines  = document.getElementById('arm-pivot-lines');
 
-// Angle from pivot: 0° = pointing straight down
-// Negative = swung right (rest), Positive = swung left over disc (play)
-const ARM_REST = -38;
-const ARM_PLAY = 12;
+// Arm swing angle (degrees from straight-down)
+// REST = lifted off disc to the right; PLAY = needle resting on outer groove
+const ARM_REST = -42;
+const ARM_PLAY =  8;   // keeps needle in the black groove area, not on label
 
 let armAngle       = ARM_REST;
 let armAngleTarget = ARM_REST;
@@ -772,81 +814,94 @@ function getDisc() {
   };
 }
 
-function setAttr(el, attrs) {
-  for (const [k,v] of Object.entries(attrs)) el.setAttribute(k, v);
+function setPivotGroupPos(cx, cy) {
+  // Move all pivot elements
+  for (const el of [armPivotBase, armPivotKnob, armPivotDot]) {
+    el.setAttribute('cx', cx); el.setAttribute('cy', cy);
+  }
+  armPivotLines.setAttribute('transform', `translate(${cx},${cy})`);
 }
 
 function buildTonearm() {
   const disc = getDisc();
-  // Pivot upper-right, just outside disc
-  armPX    = disc.cx + disc.r * 0.62;
-  armPY    = disc.cy - disc.r * 0.80;
-  armLenPx = disc.r * 0.92;
+  // Pivot: upper-right area, partially outside disc
+  armPX    = disc.cx + disc.r * 0.64;
+  armPY    = disc.cy - disc.r * 0.82;
+  armLenPx = disc.r * 0.94;
   renderArm();
+}
+
+function sCurvePath(px, py, tx, ty) {
+  // Build an S-curve bezier from pivot to tip.
+  // The S is achieved by offsetting control points perpendicularly in opposite directions.
+  const dx = tx - px, dy = ty - py;
+  const len = Math.sqrt(dx*dx + dy*dy);
+  // Perpendicular unit vector
+  const nx = -dy / len, ny = dx / len;
+  const bulge = len * 0.22; // how much the S bends
+  // CP1: 35% along arm, offset perp +bulge (bows right)
+  const c1x = px + dx*0.35 + nx*bulge,  c1y = py + dy*0.35 + ny*bulge;
+  // CP2: 65% along arm, offset perp -bulge (bows left)
+  const c2x = px + dx*0.65 - nx*bulge,  c2y = py + dy*0.65 - ny*bulge;
+  return { path: `M${px},${py} C${c1x},${c1y} ${c2x},${c2y} ${tx},${ty}`, c1x, c1y, c2x, c2y };
 }
 
 function renderArm() {
   const rad = armAngle * Math.PI / 180;
   const sin = Math.sin(rad), cos = Math.cos(rad);
 
-  // Main arm tip position
-  const tx = armPX + sin * armLenPx;
-  const ty = armPY + cos * armLenPx;
+  // Tube runs from just past counterweight through pivot to the headshell connector
+  // Counterweight sits BEHIND pivot (opposite arm direction)
+  const cwDist = armLenPx * 0.20;
+  const cwX = armPX - sin * cwDist;
+  const cwY = armPY - cos * cwDist;
 
-  // Rod starts a bit past pivot (counterweight side ends before pivot visually)
-  const rodStartFrac = 0.18; // how far back counterweight is from pivot
-  const rx = armPX - sin * armLenPx * rodStartFrac;
-  const ry = armPY - cos * armLenPx * rodStartFrac;
+  // Tube end = where headshell connector is
+  const tipX = armPX + sin * armLenPx;
+  const tipY = armPY + cos * armLenPx;
 
-  // Shine line slightly offset perpendicular for 3D feel
-  const perpX = -cos * 1.5, perpY = sin * 1.5;
+  // S-curve bezier for the tube
+  const curve = sCurvePath(cwX, cwY, tipX, tipY);
+  armTubeShadow.setAttribute('d', curve.path);
+  armTube.setAttribute('d', curve.path);
+  armTubeShine.setAttribute('d', curve.path);
 
-  // Headshell kink: arm bends slightly at the last ~15% — simulate with a short angled segment
-  const kinkFrac = 0.88;
-  const kx = armPX + sin * armLenPx * kinkFrac;
-  const ky = armPY + cos * armLenPx * kinkFrac;
-  // Kink end (headshell mount): offset perpendicular ~8px
-  const kex = kx - cos * 8;
-  const key = ky + sin * 8;
+  // Counterweight circles
+  armCwOuter.setAttribute('cx', cwX); armCwOuter.setAttribute('cy', cwY);
+  armCwInner.setAttribute('cx', cwX); armCwInner.setAttribute('cy', cwY);
 
-  // Counterweight position (behind pivot)
-  const wx = armPX - sin * armLenPx * 0.20;
-  const wy = armPY - cos * armLenPx * 0.20;
+  // Connector cylinder at tube end (small rect rotated)
+  // perpendicular to arm direction for headshell
+  const connW = 12, connH = 20;
+  armConnector.setAttribute('x', tipX - connW/2);
+  armConnector.setAttribute('y', tipY - connH*0.3);
+  armConnector.setAttribute('width', connW);
+  armConnector.setAttribute('height', connH);
+  armConnector.setAttribute('transform',
+    `rotate(${armAngle}, ${tipX}, ${tipY})`);
 
-  // Needle tip (extends ~18px beyond headshell mount, in arm direction)
-  const nx2 = kex + sin * 18;
-  const ny2 = key + cos * 18;
-
-  // --- Draw shadow first (under everything) ---
-  setAttr(armBodyShadow, { x1: rx+2, y1: ry+3, x2: kx+2, y2: ky+3 });
-
-  // --- Main arm rod (pivot to kink) ---
-  setAttr(armBodyEl, { x1: rx, y1: ry, x2: kx, y2: ky });
-
-  // --- Shine stripe ---
-  setAttr(armShineEl, {
-    x1: rx + perpX, y1: ry + perpY,
-    x2: kx + perpX, y2: ky + perpY
-  });
-
-  // --- Kink segment (headshell bend) ---
-  setAttr(armKinkEl, { x1: kx, y1: ky, x2: kex, y2: key });
-
-  // --- Headshell: translate to mount point, rotate to arm direction ---
+  // Headshell: perpendicular to arm, extends sideways from tip
+  // In the real tonearm the headshell is at ~90° to the arm end
+  const headAngle = armAngle - 90; // headshell extends perpendicular
   armHeadEl.setAttribute('transform',
-    `translate(${kex},${key}) rotate(${armAngle})`);
+    `translate(${tipX}, ${tipY}) rotate(${headAngle})`);
 
-  // --- Needle ---
-  setAttr(armNeedleEl, { x1: kex, y1: key, x2: nx2, y2: ny2 });
+  // Cartridge sits on the headshell front edge
+  const cartX = tipX + cos * 14 * Math.sign(sin >= 0 ? 1 : -1);
+  const cartY = tipY - sin * 14 * Math.sign(sin >= 0 ? 1 : -1);
+  armCartridge.setAttribute('transform',
+    `translate(${tipX}, ${tipY}) rotate(${headAngle}) translate(18, -1)`);
 
-  // --- Counterweight ---
-  setAttr(armWeightOuter, { cx: wx, cy: wy });
-  setAttr(armWeightEl,    { cx: wx, cy: wy });
+  // Needle drops straight down from cartridge tip
+  const needX = tipX + Math.cos((headAngle)*Math.PI/180) * 22;
+  const needY = tipY + Math.sin((headAngle)*Math.PI/180) * 22;
+  armNeedleEl.setAttribute('x1', needX);
+  armNeedleEl.setAttribute('y1', needY);
+  armNeedleEl.setAttribute('x2', needX + cos * 14);
+  armNeedleEl.setAttribute('y2', needY + sin * 14);
 
-  // --- Pivot ---
-  setAttr(armPivotEl,    { cx: armPX, cy: armPY });
-  setAttr(armPivotInner, { cx: armPX, cy: armPY });
-  setAttr(armPivotScrew, { cx: armPX, cy: armPY });
+  // Pivot platform (stays fixed in place)
+  setPivotGroupPos(armPX, armPY);
 }
 
 function setArmAngle(target) {
