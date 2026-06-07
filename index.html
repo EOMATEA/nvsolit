@@ -670,6 +670,18 @@ const armPivotDot    = document.getElementById('arm-pivot-dot');
 const armPivotLines  = document.getElementById('arm-pivot-lines');
 
 // ══════════════════════════════════════════
+// DISC GEOMETRY helper
+// ══════════════════════════════════════════
+function getDisc() {
+  const rect = vinylEl.getBoundingClientRect();
+  return {
+    cx: rect.left + rect.width  / 2,
+    cy: rect.top  + rect.height / 2,
+    r:  rect.width / 2 * 0.968,
+  };
+}
+
+// ══════════════════════════════════════════
 // COCKROACH — random wander inside disc
 // ══════════════════════════════════════════
 const roachEl = document.getElementById('roach');
