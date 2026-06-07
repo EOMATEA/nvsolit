@@ -753,22 +753,24 @@ window.addEventListener('scroll', () => {
   }
 
   if (!isSpinning) { isSpinning = true; spinLoop(); }
-  // Tonearm swings in when spinning
-  setArmAngle(ARM_PLAY);
+  // Tonearm drops onto disc when spinning
+  setArmAngle(armPlayAngle());
 }, { passive: true });
 
 function spinLoop() {
   if (Math.abs(velocity) > 0.02) {
     setVinylRot(vinylRot + velocity);
     velocity *= 0.915;
-    // Tonearm wobble while playing
-    const wobble = ARM_PLAY + Math.sin(Date.now() * 0.003) * 1.8;
-    setArmAngle(wobble);
+    // Slow inward tracking: each degree of vinyl spin advances needle inward slightly
+    armTrackOffset = Math.min(1, armTrackOffset + Math.abs(velocity) * 0.00012);
+    // Smooth target follows track position (very slow, no wobble)
+    armAngleTarget = armPlayAngle();
     spinRafId = requestAnimationFrame(spinLoop);
   } else {
     velocity   = 0;
     isSpinning = false;
-    // Arm lifts off
+    // Arm lifts off and resets to outer groove for next play
+    armTrackOffset = 0;
     setArmAngle(ARM_REST);
     // Roach crawls back
     if (roachState === 'FLUNG') startCrawl();
@@ -795,15 +797,20 @@ const armPivotKnob   = document.getElementById('arm-pivot-knob');
 const armPivotDot    = document.getElementById('arm-pivot-dot');
 const armPivotLines  = document.getElementById('arm-pivot-lines');
 
-// Arm swing angle (degrees from straight-down)
-// REST = lifted off disc to the right; PLAY = needle resting on outer groove
-const ARM_REST = -42;
-const ARM_PLAY =  8;   // keeps needle in the black groove area, not on label
+// ══════════════════════════════════════════
+// TONEARM geometry
+// ══════════════════════════════════════════
+// All angles measured in degrees clockwise from "straight down" at pivot
+let ARM_REST = -40;      // recalculated in buildTonearm
+let ARM_PLAY_OUT = 0;    // needle at outer groove (recalculated)
+let ARM_PLAY_IN  = 0;    // needle at inner groove (recalculated)
 
-let armAngle       = ARM_REST;
-let armAngleTarget = ARM_REST;
+let armAngle       = -999; // sentinel → set in buildTonearm
+let armAngleTarget = -999;
 let armPX = 0, armPY = 0, armLenPx = 0;
 let armRaf = null;
+// Slow inward tracking while spinning
+let armTrackOffset = 0;   // 0=outer groove, 1=inner groove (normalised)
 
 function getDisc() {
   const rect = vinylEl.getBoundingClientRect();
@@ -815,93 +822,115 @@ function getDisc() {
 }
 
 function setPivotGroupPos(cx, cy) {
-  // Move all pivot elements
-  for (const el of [armPivotBase, armPivotKnob, armPivotDot]) {
-    el.setAttribute('cx', cx); el.setAttribute('cy', cy);
-  }
+  for (const el of [armPivotBase, armPivotKnob, armPivotDot])
+    { el.setAttribute('cx', cx); el.setAttribute('cy', cy); }
   armPivotLines.setAttribute('transform', `translate(${cx},${cy})`);
 }
 
 function buildTonearm() {
   const disc = getDisc();
-  // Pivot: upper-right area, partially outside disc
-  armPX    = disc.cx + disc.r * 0.64;
-  armPY    = disc.cy - disc.r * 0.82;
-  armLenPx = disc.r * 0.94;
+  const vw = window.innerWidth;
+
+  // ── Pivot: upper-right, clamped so it's always inside viewport ──
+  // Raw position is on the disc's upper-right arc
+  const rawPX = disc.cx + disc.r * 0.58;
+  const rawPY = disc.cy - disc.r * 0.72;
+  armPX = Math.min(rawPX, vw - 55);   // never go offscreen
+  armPY = rawPY;
+
+  // ── Arm length: pivot → needle tip ──
+  armLenPx = disc.r * 0.88;
+
+  // ── Compute angle toward disc centre (so we can derive play/rest) ──
+  const toCx = disc.cx - armPX, toCy = disc.cy - armPY;
+  const baseAngle = Math.atan2(toCx, toCy) * 180 / Math.PI; // deg from straight-down
+
+  // ── ARM_PLAY_OUT: needle at outer groove (82% disc radius) ──
+  // Law of cosines — find angle offset from baseAngle
+  const D  = Math.sqrt(toCx*toCx + toCy*toCy); // pivot→center distance
+  const G  = disc.r * 0.82;                      // outer groove radius
+  const L  = armLenPx;
+  const cosA = Math.max(-1, Math.min(1, (D*D + L*L - G*G) / (2*D*L)));
+  const alpha = Math.acos(cosA) * 180 / Math.PI; // offset from direct-center direction
+  ARM_PLAY_OUT = baseAngle + alpha;  // swing left of baseAngle → outer groove
+  // ── ARM_PLAY_IN: needle at inner groove (40% disc radius, edge of label) ──
+  const Gi = disc.r * 0.40;
+  const cosB = Math.max(-1, Math.min(1, (D*D + L*L - Gi*Gi) / (2*D*L)));
+  ARM_PLAY_IN  = baseAngle - Math.acos(cosB) * 180 / Math.PI;
+  // ── ARM_REST: 36° further right from PLAY_OUT (lifted off disc) ──
+  ARM_REST = ARM_PLAY_OUT - 36;
+
+  // Init angle on first build
+  if (armAngle === -999) {
+    armAngle = ARM_REST;
+    armAngleTarget = ARM_REST;
+  }
   renderArm();
 }
 
 function sCurvePath(px, py, tx, ty) {
-  // Build an S-curve bezier from pivot to tip.
-  // The S is achieved by offsetting control points perpendicularly in opposite directions.
   const dx = tx - px, dy = ty - py;
-  const len = Math.sqrt(dx*dx + dy*dy);
-  // Perpendicular unit vector
-  const nx = -dy / len, ny = dx / len;
-  const bulge = len * 0.22; // how much the S bends
-  // CP1: 35% along arm, offset perp +bulge (bows right)
-  const c1x = px + dx*0.35 + nx*bulge,  c1y = py + dy*0.35 + ny*bulge;
-  // CP2: 65% along arm, offset perp -bulge (bows left)
-  const c2x = px + dx*0.65 - nx*bulge,  c2y = py + dy*0.65 - ny*bulge;
-  return { path: `M${px},${py} C${c1x},${c1y} ${c2x},${c2y} ${tx},${ty}`, c1x, c1y, c2x, c2y };
+  const len = Math.sqrt(dx*dx + dy*dy) || 1;
+  const nx = -dy/len, ny = dx/len;   // perpendicular unit
+  const b = len * 0.20;
+  const c1x = px + dx*0.30 + nx*b,  c1y = py + dy*0.30 + ny*b;
+  const c2x = px + dx*0.70 - nx*b,  c2y = py + dy*0.70 - ny*b;
+  return `M${px},${py} C${c1x},${c1y} ${c2x},${c2y} ${tx},${ty}`;
 }
 
 function renderArm() {
   const rad = armAngle * Math.PI / 180;
   const sin = Math.sin(rad), cos = Math.cos(rad);
 
-  // Tube runs from just past counterweight through pivot to the headshell connector
-  // Counterweight sits BEHIND pivot (opposite arm direction)
-  const cwDist = armLenPx * 0.20;
-  const cwX = armPX - sin * cwDist;
-  const cwY = armPY - cos * cwDist;
-
-  // Tube end = where headshell connector is
+  // Tip of arm (where headshell/needle is)
   const tipX = armPX + sin * armLenPx;
   const tipY = armPY + cos * armLenPx;
 
-  // S-curve bezier for the tube
-  const curve = sCurvePath(cwX, cwY, tipX, tipY);
-  armTubeShadow.setAttribute('d', curve.path);
-  armTube.setAttribute('d', curve.path);
-  armTubeShine.setAttribute('d', curve.path);
+  // Counterweight: behind pivot, opposite arm direction
+  const cwDist = armLenPx * 0.24;
+  const cwX = armPX - sin * cwDist;
+  const cwY = armPY - cos * cwDist;
 
-  // Counterweight circles
+  // S-curve tube from counterweight → tip (pivot circle drawn on top)
+  const d = sCurvePath(cwX, cwY, tipX, tipY);
+  armTubeShadow.setAttribute('d', d);
+  armTube.setAttribute('d', d);
+  armTubeShine.setAttribute('d', d);
+
+  // Counterweight
   armCwOuter.setAttribute('cx', cwX); armCwOuter.setAttribute('cy', cwY);
   armCwInner.setAttribute('cx', cwX); armCwInner.setAttribute('cy', cwY);
 
-  // Connector cylinder at tube end (small rect rotated)
-  // perpendicular to arm direction for headshell
-  const connW = 12, connH = 20;
-  armConnector.setAttribute('x', tipX - connW/2);
-  armConnector.setAttribute('y', tipY - connH*0.3);
-  armConnector.setAttribute('width', connW);
-  armConnector.setAttribute('height', connH);
-  armConnector.setAttribute('transform',
-    `rotate(${armAngle}, ${tipX}, ${tipY})`);
+  // Connector at tip (rotated rect)
+  armConnector.setAttribute('x', tipX - 6);
+  armConnector.setAttribute('y', tipY - 10);
+  armConnector.setAttribute('width', 12);
+  armConnector.setAttribute('height', 18);
+  armConnector.setAttribute('transform', `rotate(${armAngle},${tipX},${tipY})`);
 
-  // Headshell: perpendicular to arm, extends sideways from tip
-  // In the real tonearm the headshell is at ~90° to the arm end
-  const headAngle = armAngle - 90; // headshell extends perpendicular
+  // Headshell: perpendicular to arm direction at the tip
+  // headshell extends PERPENDICULAR and slightly INWARD (toward disc)
   armHeadEl.setAttribute('transform',
-    `translate(${tipX}, ${tipY}) rotate(${headAngle})`);
+    `translate(${tipX},${tipY}) rotate(${armAngle - 90})`);
 
-  // Cartridge sits on the headshell front edge
-  const cartX = tipX + cos * 14 * Math.sign(sin >= 0 ? 1 : -1);
-  const cartY = tipY - sin * 14 * Math.sign(sin >= 0 ? 1 : -1);
+  // Cartridge on headshell
   armCartridge.setAttribute('transform',
-    `translate(${tipX}, ${tipY}) rotate(${headAngle}) translate(18, -1)`);
+    `translate(${tipX},${tipY}) rotate(${armAngle - 90}) translate(16,0)`);
 
-  // Needle drops straight down from cartridge tip
-  const needX = tipX + Math.cos((headAngle)*Math.PI/180) * 22;
-  const needY = tipY + Math.sin((headAngle)*Math.PI/180) * 22;
-  armNeedleEl.setAttribute('x1', needX);
-  armNeedleEl.setAttribute('y1', needY);
-  armNeedleEl.setAttribute('x2', needX + cos * 14);
-  armNeedleEl.setAttribute('y2', needY + sin * 14);
+  // Needle: short line at headshell front, continuing in arm direction
+  const nLen = 16;
+  armNeedleEl.setAttribute('x1', tipX + sin * 2);
+  armNeedleEl.setAttribute('y1', tipY + cos * 2);
+  armNeedleEl.setAttribute('x2', tipX + sin * (2 + nLen));
+  armNeedleEl.setAttribute('y2', tipY + cos * (2 + nLen));
 
-  // Pivot platform (stays fixed in place)
+  // Pivot (on top of everything)
   setPivotGroupPos(armPX, armPY);
+}
+
+// Compute play angle for current track offset (0=outer, 1=inner)
+function armPlayAngle() {
+  return ARM_PLAY_OUT + (ARM_PLAY_IN - ARM_PLAY_OUT) * armTrackOffset;
 }
 
 function setArmAngle(target) {
@@ -917,7 +946,9 @@ function armAnimLoop() {
     armRaf = null;
     return;
   }
-  armAngle += diff * 0.055;
+  // Slow easing for tracking (play), faster for lift/drop
+  const speed = (armAngleTarget === ARM_REST) ? 0.07 : 0.04;
+  armAngle += diff * speed;
   renderArm();
   armRaf = requestAnimationFrame(armAnimLoop);
 }
